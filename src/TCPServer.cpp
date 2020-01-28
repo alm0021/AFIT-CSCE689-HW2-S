@@ -81,6 +81,7 @@ void TCPServer::listenSvr() {
 
 		 //TESTING: Display IP Address*********
 		 std::cout << "IP Address is: " << ipaddr_str << std::endl;
+		 //Check if IP Address is on whitelist
 		 if (!new_conn->whitelisted(ipaddr_str)) {
 			 std::cout << "IP address not on whitelist!\n";
 			 //Disconnect and remove them from the connect list

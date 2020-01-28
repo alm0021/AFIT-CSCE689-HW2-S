@@ -11,9 +11,10 @@
 
 // The filename/path of the password file
 const char pwdfilename[] = "passwd";
+PasswdMgr _pwd(pwdfilename);
 
 TCPConn::TCPConn(){ // LogMgr &server_log):_server_log(server_log) {
-
+	//_pwd(pwdfilename);
 }
 
 
@@ -130,6 +131,17 @@ void TCPConn::getUsername() {
 		return;
 	_username = userName;
 	std::cout << "Username is: " << _username << std::endl;
+
+	//Check if valid user
+	if (_pwd.checkUser(_username.c_str()))
+	{
+		std::cout << "User Found!\n";
+		_status = s_passwd;
+	}
+	else {
+		std::cout << "Invalid user, disconnecting.";
+		disconnect();
+	}
 }
 
 /**********************************************************************************************
@@ -141,7 +153,40 @@ void TCPConn::getUsername() {
  **********************************************************************************************/
 
 void TCPConn::getPasswd() {
-   // Insert your astounding code here
+	// Insert your astounding code here
+
+	std::string clrTxt, msg;
+	_pwd_attempts = 2;
+	while (_pwd_attempts > 0) {
+		_connfd.writeFD("Enter Password: \n");
+		if (!getUserInput(clrTxt)) {
+			_pwd_attempts--;
+			msg += "Invalid Password Attempt. \n";
+			msg += std::to_string(_pwd_attempts);
+			msg + " remaining.\n";
+			_connfd.writeFD(msg);
+		}
+		else {
+			if (!_pwd.checkPasswd(_username.c_str(), clrTxt.c_str())) {
+				_pwd_attempts--;
+				msg += "Invalid Password Attempt. \n";
+				msg += std::to_string(_pwd_attempts);
+				msg + " remaining.\n";
+				_connfd.writeFD(msg);
+			}
+			else {
+				std::cout << "User Password Accepted\n";
+				_connfd.writeFD("Password Accepted. Loggin in...\n");
+				_status = s_menu;
+				return;
+			}
+		}
+	}
+	//After 2 attempts, disconnect
+	std::cout << "Too many invalid password attemtps. Disconnecting user...\n";
+	_connfd.writeFD("Too many invalid password attemtps. Disconnecting user...\n");
+	disconnect();
+
 }
 
 /**********************************************************************************************
@@ -201,7 +246,7 @@ bool TCPConn::getUserInput(std::string &cmd) {
 bool TCPConn::whitelisted(std::string addr) {
 	std::string line;
 	std::ifstream whtlst;
-	whtlst.open("src/whitelist");
+	whtlst.open("whitelist");
 	if (whtlst.is_open()) {
 		//Check IP address against whitelist
 		while (getline(whtlst, line))

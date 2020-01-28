@@ -2,6 +2,7 @@
 #define TCPCONN_H
 
 #include "FileDesc.h"
+#include "PasswdMgr.h"
 
 const int max_attempts = 2;
 
@@ -45,6 +46,8 @@ private:
    statustype _status = s_username;
 
    SocketFD _connfd;
+
+   PasswdMgr _pwd; //Passwd instance to handle users and passwords
  
    std::string _username; // The username this connection is associated with
 
