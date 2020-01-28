@@ -79,6 +79,16 @@ void TCPServer::listenSvr() {
          std::string ipaddr_str;
          new_conn->getIPAddrStr(ipaddr_str);
 
+		 //TESTING: Display IP Address*********
+		 std::cout << "IP Address is: " << ipaddr_str << std::endl;
+		 if (!new_conn->whitelisted(ipaddr_str)) {
+			 std::cout << "IP address not on whitelist!\n";
+			 //Disconnect and remove them from the connect list
+			 new_conn->disconnect();
+			 _connlist.pop_back();
+			 std::cout << "Connection disconnected.\n";
+			 continue;
+		 }
 
          new_conn->sendText("Welcome to the CSCE 689 Server!\n");
 

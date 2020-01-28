@@ -28,6 +28,7 @@ public:
    void changePassword();
    
    bool getUserInput(std::string &cmd);
+   bool whitelisted(std::string addr); //Check if IP address is on whitelist
 
    void disconnect();
    bool isConnected();

@@ -4,6 +4,8 @@
 #include <cstring>
 #include <algorithm>
 #include <iostream>
+#include <fstream>
+#include <iostream>
 #include "TCPConn.h"
 #include "strfuncts.h"
 
@@ -120,6 +122,14 @@ void TCPConn::handleConnection() {
 
 void TCPConn::getUsername() {
    // Insert your mind-blowing code here
+
+	if (!_connfd.hasData())
+		return;
+	std::string userName;
+	if (!getUserInput(userName))
+		return;
+	_username = userName;
+	std::cout << "Username is: " << _username << std::endl;
 }
 
 /**********************************************************************************************
@@ -181,6 +191,33 @@ bool TCPConn::getUserInput(std::string &cmd) {
    clrNewlines(cmd);
 
    return true;
+}
+
+/**********************************************************************************************
+ * whitelisted - Returns true is given IP address in on whitelist and false otherwise.
+ *
+ *    Throws: runtime_error for unrecoverable issues
+ **********************************************************************************************/
+bool TCPConn::whitelisted(std::string addr) {
+	std::string line;
+	std::ifstream whtlst;
+	whtlst.open("src/whitelist");
+	if (whtlst.is_open()) {
+		//Check IP address against whitelist
+		while (getline(whtlst, line))
+		{
+			clrNewlines(line);
+			if (addr.compare(line) == 0) {
+				std::cout << "IP Address is on whitelist.\n";
+				return true;
+			}
+		}
+		whtlst.close();
+	}
+	else {
+		std::cout << "Unable to open file\n";
+		return false;
+	}
 }
 
 /**********************************************************************************************
