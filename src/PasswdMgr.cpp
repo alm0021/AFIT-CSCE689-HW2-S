@@ -105,7 +105,7 @@ bool PasswdMgr::readUser(FileFD &pwfile, std::string &name, std::vector<uint8_t>
 {
    // Insert your perfect code here!
 	std::string line;
-	if (pwfile.readStr(line) > 0)
+	if (pwfile.readStr(line) > 0) //change!!!!
 	{
 		clrNewlines(line);
 		name = line;
@@ -135,23 +135,13 @@ int PasswdMgr::writeUser(FileFD &pwfile, std::string &name, std::vector<uint8_t>
    int results = 0;
 
    // Insert your wild code here!
-   // Convert vector to string
-   std::string hashStr, saltStr, writeData;
-   for (auto i : hash)
-   {
-	   hashStr += hash[i];
-   }
-   for (auto i : salt)
-   {
-	   saltStr += salt[i];
-   }
 
-   writeData += name;
-   writeData += "\n";
-   writeData += hashStr;
-   writeData += saltStr;
-   writeData += "\n";
-   pwfile.writeFD(writeData);
+   //results += pwfile.writeByte('\n');
+   results += pwfile.writeFD(name);
+   results += pwfile.writeByte('\n');
+   results += pwfile.writeBytes(hash);
+   results += pwfile.writeBytes(salt);
+   results += pwfile.writeByte('\n');
 
    return results; 
 }
@@ -226,15 +216,20 @@ void PasswdMgr::hashArgon2(std::vector<uint8_t> &ret_hash, std::vector<uint8_t> 
 
 void PasswdMgr::addUser(const char *name, const char *passwd) {
    // Add those users!
-	if (checkUser(name)) { std::cout << "User Already Exists.\n"; }
+
+	if (checkUser(name)) { 
+		std::cout << "User Already Exists.\n"; 
+		return;
+	}
 	
 	//Open passwd file for writing
 	FileFD pwfile(_pwd_file.c_str());
-	if (!pwfile.openFile(FileFD::writefd))
+	if (!pwfile.openFile(FileFD::appendfd))
 		throw pwfile_error("Could not open passwd file for writing");
 	
+	std::string nameStr(name);
 	std::vector<uint8_t> hash, salt;
-	writeUser(pwfile, name, &hash, &salt);
+	writeUser(pwfile, nameStr, hash, salt);
 
 	pwfile.closeFD();
 }
