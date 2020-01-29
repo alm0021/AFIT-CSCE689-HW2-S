@@ -3,6 +3,7 @@
 
 #include "FileDesc.h"
 #include "PasswdMgr.h"
+#include <memory>
 
 const int max_attempts = 2;
 
@@ -47,7 +48,8 @@ private:
 
    SocketFD _connfd;
 
-   PasswdMgr _pwd; //Passwd instance to handle users and passwords
+   //PasswdMgr* _pwd; //Passwd instance to handle users and passwords
+   //static std::unique_ptr<PasswdMgr> _pwd;
  
    std::string _username; // The username this connection is associated with
 

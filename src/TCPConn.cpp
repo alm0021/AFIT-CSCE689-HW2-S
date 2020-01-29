@@ -6,17 +6,16 @@
 #include <iostream>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include "TCPConn.h"
 #include "strfuncts.h"
 
 // The filename/path of the password file
 const char pwdfilename[] = "passwd";
-PasswdMgr _pwd(pwdfilename);
+static std::unique_ptr<PasswdMgr> _pwd = std::make_unique<PasswdMgr>(pwdfilename);
 
-TCPConn::TCPConn(){ // LogMgr &server_log):_server_log(server_log) {
-	//_pwd(pwdfilename);
+TCPConn::TCPConn() { // LogMgr &server_log):_server_log(server_log) {
 }
-
 
 TCPConn::~TCPConn() {
 
@@ -133,13 +132,13 @@ void TCPConn::getUsername() {
 	std::cout << "Username is: " << _username << std::endl;
 
 	//Check if valid user
-	if (_pwd.checkUser(_username.c_str()))
+	if (_pwd->checkUser(_username.c_str()))
 	{
 		std::cout << "User Found!\n";
 		_status = s_passwd;
 	}
 	else {
-		std::cout << "Invalid user, disconnecting.";
+		std::cout << "Invalid user, disconnecting.\n";
 		disconnect();
 	}
 }
@@ -167,7 +166,7 @@ void TCPConn::getPasswd() {
 			_connfd.writeFD(msg);
 		}
 		else {
-			if (!_pwd.checkPasswd(_username.c_str(), clrTxt.c_str())) {
+			if (!_pwd->checkPasswd(_username.c_str(), clrTxt.c_str())) {
 				_pwd_attempts--;
 				msg += "Invalid Password Attempt. \n";
 				msg += std::to_string(_pwd_attempts);
