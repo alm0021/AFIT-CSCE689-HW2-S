@@ -47,9 +47,6 @@ private:
    statustype _status = s_username;
 
    SocketFD _connfd;
-
-   //PasswdMgr* _pwd; //Passwd instance to handle users and passwords
-   //static std::unique_ptr<PasswdMgr> _pwd;
  
    std::string _username; // The username this connection is associated with
 

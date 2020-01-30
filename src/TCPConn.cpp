@@ -9,10 +9,13 @@
 #include <memory>
 #include "TCPConn.h"
 #include "strfuncts.h"
+#include "Logger.h"
 
 // The filename/path of the password file
 const char pwdfilename[] = "passwd";
+const char logfilename[] = "server.log";
 static std::unique_ptr<PasswdMgr> _pwd = std::make_unique<PasswdMgr>(pwdfilename);
+//static std::unique_ptr<Logger> _log = std::make_unique<Logger>(logfilename);
 
 TCPConn::TCPConn() { // LogMgr &server_log):_server_log(server_log) {
 }

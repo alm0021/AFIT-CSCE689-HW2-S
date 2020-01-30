@@ -19,7 +19,6 @@ PasswdMgr::PasswdMgr(const char *pwd_file):_pwd_file(pwd_file) {
 
 }
 
-
 PasswdMgr::~PasswdMgr() {
 
 }
