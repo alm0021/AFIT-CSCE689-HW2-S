@@ -162,7 +162,7 @@ void TCPConn::getPasswd() {
 			_pwd_attempts--;
 			msg += "Invalid Password Attempt. \n";
 			msg += std::to_string(_pwd_attempts);
-			msg + " remaining.\n";
+			msg += " attempts remaining.\n";
 			_connfd.writeFD(msg);
 		}
 		else {
@@ -170,7 +170,7 @@ void TCPConn::getPasswd() {
 				_pwd_attempts--;
 				msg += "Invalid Password Attempt. \n";
 				msg += std::to_string(_pwd_attempts);
-				msg + " remaining.\n";
+				msg += " attempts remaining.\n";
 				_connfd.writeFD(msg);
 			}
 			else {
@@ -198,7 +198,44 @@ void TCPConn::getPasswd() {
  **********************************************************************************************/
 
 void TCPConn::changePassword() {
-   // Insert your amazing code here
+	// Insert your amazing code here
+	std::string clrTxt, msg;
+	_pwd_attempts = 3;
+
+	while (_status == s_changepwd && _pwd_attempts > 0) {
+		if (!getUserInput(clrTxt)) {
+			_pwd_attempts--;
+			msg += "Invalid Password. \n";
+			_connfd.writeFD(msg);
+		}
+		else if (_pwd->checkPasswd(_username.c_str(), clrTxt.c_str())) {
+			_connfd.writeFD("New password is the same as current password.\n");
+			_status = s_menu;
+			return;
+		}
+		else {
+			if (_pwd->changePasswd(_username.c_str(), clrTxt.c_str())) {
+				std::cout << "New User Password Accepted\n";
+				_connfd.writeFD("New User Password Accepted.\n");
+				_pwd_attempts = 3;
+				_status = s_confirmpwd;
+			}
+			else {
+				_pwd_attempts--;
+				_connfd.writeFD("Invalid.\n");
+				return;
+			}
+		}
+	}
+	if (_status == s_confirmpwd) {
+		getPasswd();
+		_status = s_menu;
+		return;
+	}
+	//After 2 attempts, disconnect
+	std::cout << "Too many invalid password attemtps. Disconnecting user...\n";
+	_connfd.writeFD("Too many invalid password attemtps. Disconnecting user...\n");
+	disconnect();
 }
 
 
@@ -272,13 +309,13 @@ bool TCPConn::whitelisted(std::string addr) {
  **********************************************************************************************/
 
 void TCPConn::getMenuChoice() {
+	_connfd.writeFD("\nSelect a Menu Option!\n");
    if (!_connfd.hasData())
       return;
    std::string cmd;
    if (!getUserInput(cmd))
       return;
    lower(cmd);      
-
    // Don't be lazy and use my outputs--make your own!
    std::string msg;
    if (cmd.compare("hello") == 0) {

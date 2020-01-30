@@ -23,6 +23,7 @@ class PasswdMgr {
 
       void hashArgon2(std::vector<uint8_t> &ret_hash, std::vector<uint8_t> &ret_salt, const char *passwd, 
                                                                                  std::vector<uint8_t> *in_salt = NULL);
+	  void printBytes(std::vector <uint8_t> hash);
 
    private:
       bool findUser(const char *name, std::vector<uint8_t> &hash, std::vector<uint8_t> &salt);

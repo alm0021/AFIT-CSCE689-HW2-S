@@ -9,6 +9,9 @@
 #include "FileDesc.h"
 #include "strfuncts.h"
 
+#define HASHLEN 32
+#define SALTLEN 16
+
 const int hashlen = 32;
 const int saltlen = 16;
 
@@ -59,7 +62,18 @@ bool PasswdMgr::checkPasswd(const char *name, const char *passwd) {
    if (!findUser(name, userhash, salt))
       return false;
 
+   std::cout << name << "'s passwd is " << passwd << std::endl; //DEBUGGING
+   std::cout << name << "'s hash is "; //DEBUGGING
+   printBytes(userhash); //DEBUGGING
+   std::cout << name << "'s salt is ";
+   printBytes(salt); //DEBUGGING
+
    hashArgon2(passhash, salt, passwd, &salt);
+
+   std::cout << "After hashing hash is "; //DEBUGGING
+   printBytes(passhash); //DEBUGGING
+   std::cout << "After hashing salt is "; //DEBUGGING
+   printBytes(salt); //DEBUGGING
 
    if (userhash == passhash)
       return true;
@@ -83,8 +97,41 @@ bool PasswdMgr::checkPasswd(const char *name, const char *passwd) {
 bool PasswdMgr::changePasswd(const char *name, const char *passwd) {
 
    // Insert your insane code here
+	//Make sure user exits
+	std::vector<uint8_t> hash, salt, newHash;
+	if (!findUser(name, hash, salt)) {
+		std::cout << "User Doesn't Exist.\n";
+		return false;
+	}
 
-   return true;
+	hashArgon2(newHash, salt, passwd, &salt); //Hash new password using existing salt
+
+	std::cout << "After hashing new password hash is "; //DEBUGGING
+	printBytes(newHash); //DEBUGGING
+	std::cout << "After hashing new (old) salt is "; //DEBUGGING
+	printBytes(salt); //DEBUGGING
+
+	//Open passwd file for writing
+	FileFD pwfile(_pwd_file.c_str());
+	if (!pwfile.openFile(FileFD::readfd))
+		throw pwfile_error("Could not open passwd file for writing");
+
+	std::string line;
+	
+	while (pwfile.readStr(line) > 0)
+	{
+		clrNewlines(line);
+		if (line.compare(name) == 0) { //find username
+			pwfile.writeBytes(newHash);
+			findUser(name, hash, salt); //DEBUGGING
+			std::cout << "After hashing new password hash on file is "; //DEBUGGING
+			printBytes(hash); //DEBUGGING
+			pwfile.closeFD();
+			return true;
+		}
+	}
+
+   return false;
 }
 
 /*****************************************************************************************************
@@ -105,14 +152,18 @@ bool PasswdMgr::readUser(FileFD &pwfile, std::string &name, std::vector<uint8_t>
 {
    // Insert your perfect code here!
 	std::string line;
-	if (pwfile.readStr(line) > 0) //change!!!!
+	int lineSize = pwfile.readStr(line);
+	if (lineSize > 0)
 	{
 		clrNewlines(line);
 		name = line;
-			std::cout << "User " << name << " is in passwd file.\n";
-			return true;
+		pwfile.readBytes(hash, HASHLEN);
+		pwfile.readBytes(salt, SALTLEN+1);
+		salt.pop_back();
+		std::cout << "Salt size is " << salt.size() << "\n"; //DEBUGGING
+		std::cout << "User " << name << " is in passwd file.\n"; //DEBUGGING
+		return true;
 	}
-	
 	std::cout << "End of passwd file.\n";
    return false;
 }
@@ -136,7 +187,6 @@ int PasswdMgr::writeUser(FileFD &pwfile, std::string &name, std::vector<uint8_t>
 
    // Insert your wild code here!
 
-   //results += pwfile.writeByte('\n');
    results += pwfile.writeFD(name);
    results += pwfile.writeByte('\n');
    results += pwfile.writeBytes(hash);
@@ -204,7 +254,59 @@ bool PasswdMgr::findUser(const char *name, std::vector<uint8_t> &hash, std::vect
 void PasswdMgr::hashArgon2(std::vector<uint8_t> &ret_hash, std::vector<uint8_t> &ret_salt, 
                            const char *in_passwd, std::vector<uint8_t> *in_salt) {
    // Hash those passwords!!!!
+	//Check if salt already provided
 
+	uint8_t hash1[HASHLEN];
+	uint8_t hash2[SALTLEN];
+
+	uint8_t salt[SALTLEN];
+	srand(time(NULL));
+	int rando = rand() % 1001 + 1;
+	memset(salt, rando, SALTLEN); //salt is not that unique
+
+	//Is salt is provided, use that salt
+	if (in_salt->size() > 0) {
+		std::copy(in_salt->begin(), in_salt->end(), salt);
+	}
+
+	uint8_t* pwd = (uint8_t*)strdup(in_passwd);
+	uint32_t pwdlen = strlen((char*)pwd);
+	uint32_t saltlen = strlen((char*)salt);
+
+	uint32_t t_cost = 2;            // 1-pass computation
+	uint32_t m_cost = (1 << 16);      // 64 mebibytes memory usage
+	uint32_t parallelism = 1;       // number of threads and lanes
+
+	// high-level API
+	if (argon2id_hash_raw(t_cost, m_cost, parallelism, pwd, pwdlen, salt, SALTLEN, hash1, HASHLEN) == 0)
+	{
+		//ret_hash = hash1;
+		for (int i = 0; i < HASHLEN; i++) {
+			ret_hash.push_back(hash1[i]);
+		}
+		for (int i = 0; i < SALTLEN; i++) {
+			ret_salt.push_back(salt[i]);
+		}
+
+	}
+	else
+	{
+		std::cerr << "Error hashing Password\n";
+	}
+	std::cout << "(INSIDE ARGON) Hashed PW is "; //DEBUGGING
+	for (int i = 0; i < HASHLEN; ++i) printf("%02x", ret_hash[i]); printf("\n"); //DEBUGGING
+	std::cout << "(INSIDE ARGON) Salt is "; //DEBUGGING
+	for (int i = 0; i < SALTLEN; ++i) printf("%02x", ret_salt[i]); printf("\n"); //DEBUGGING
+}
+
+/****************************************************************************************************
+ * toString - Prints hashed vectors
+ *
+ *    Throws: 
+ ****************************************************************************************************/
+void PasswdMgr::printBytes(std::vector < uint8_t > hash) {
+	
+	for (int i = 0; i < hash.size(); ++i) printf("%02x", hash[i]); printf("\n");
 }
 
 /****************************************************************************************************
@@ -229,7 +331,12 @@ void PasswdMgr::addUser(const char *name, const char *passwd) {
 	
 	std::string nameStr(name);
 	std::vector<uint8_t> hash, salt;
-	writeUser(pwfile, nameStr, hash, salt);
+	std::vector<uint8_t> userhash; // hash from the password file
+	std::vector<uint8_t> passhash; // hash derived from the parameter passwd
+
+	hashArgon2(passhash, salt, passwd, &salt);
+	
+	writeUser(pwfile, nameStr, passhash, salt);
 
 	pwfile.closeFD();
 }
