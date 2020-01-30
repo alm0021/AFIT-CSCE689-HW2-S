@@ -110,12 +110,13 @@ bool PasswdMgr::changePasswd(const char *name, const char *passwd) {
 	std::cout << "After hashing new (old) salt is "; //DEBUGGING
 	printBytes(salt); //DEBUGGING
 
-	//Open passwd file for writing
+	//Open passwd file for reading
 	FileFD pwfile(_pwd_file.c_str());
 	if (!pwfile.openFile(FileFD::readfd))
 		throw pwfile_error("Could not open passwd file for writing");
 
 	std::string line;
+	std::vector<std::string> newLines;
 	
 	while (pwfile.readStr(line) > 0)
 	{
@@ -127,6 +128,13 @@ bool PasswdMgr::changePasswd(const char *name, const char *passwd) {
 			printBytes(hash); //DEBUGGING
 			pwfile.closeFD();
 			return true;
+		}
+		else {
+			newLines.push_back(line);
+			newLines.push_back('\n');
+			pwfile.readBytes(hash, HASHLEN);
+			pwfile.readBytes(salt, SALTLEN);
+			newLines.push_back();
 		}
 	}
 
@@ -299,13 +307,30 @@ void PasswdMgr::hashArgon2(std::vector<uint8_t> &ret_hash, std::vector<uint8_t> 
 }
 
 /****************************************************************************************************
- * toString - Prints hashed vectors
+ * printBytes - Prints hashed vectors
  *
  *    Throws: 
  ****************************************************************************************************/
 void PasswdMgr::printBytes(std::vector < uint8_t > hash) {
 	
 	for (int i = 0; i < hash.size(); ++i) printf("%02x", hash[i]); printf("\n");
+}
+
+/****************************************************************************************************
+ * toString - Prints hashed vectors
+ *
+ *    Throws:
+ ****************************************************************************************************/
+std::string PasswdMgr::toString(std::vector< uint8_t > hash) {
+
+	std::string str;
+	std::ostringstream os;
+	for (int i = 0; i < hash.size(); ++i) {
+		//printf("%02x", hash[i]);
+		os << hash[i];
+	}
+	str = os.str();
+	return str;
 }
 
 /****************************************************************************************************
