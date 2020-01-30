@@ -15,7 +15,7 @@
 const char pwdfilename[] = "passwd";
 const char logfilename[] = "server.log";
 static std::unique_ptr<PasswdMgr> _pwd = std::make_unique<PasswdMgr>(pwdfilename);
-//static std::unique_ptr<Logger> _log = std::make_unique<Logger>(logfilename);
+static std::unique_ptr<Logger> _log = std::make_unique<Logger>(logfilename);
 
 TCPConn::TCPConn() { // LogMgr &server_log):_server_log(server_log) {
 }
@@ -100,7 +100,6 @@ void TCPConn::handleConnection() {
 
          case s_menu:
             getMenuChoice();
-
             break;
 
          default:
@@ -142,6 +141,12 @@ void TCPConn::getUsername() {
 	}
 	else {
 		std::cout << "Invalid user, disconnecting.\n";
+
+		//Log User Not Found
+		std::string addr;
+		_connfd.getIPAddrStr(addr);
+		_log->log(Logger::l_usr_no, addr, _username);
+
 		disconnect();
 	}
 }
@@ -180,13 +185,28 @@ void TCPConn::getPasswd() {
 				std::cout << "User Password Accepted\n";
 				_connfd.writeFD("Password Accepted. Loggin in...\n");
 				_status = s_menu;
+
+				//Log Successful Login Attempt
+				std::string addr;
+				_connfd.getIPAddrStr(addr);
+				_log->log(Logger::l_usr_yes, _username, addr);
+				_status = s_menu;
+
 				return;
 			}
 		}
 	}
+
 	//After 2 attempts, disconnect
 	std::cout << "Too many invalid password attemtps. Disconnecting user...\n";
 	_connfd.writeFD("Too many invalid password attemtps. Disconnecting user...\n");
+
+	//Log Too Many PW Attempts
+	std::string addr;
+	_connfd.getIPAddrStr(addr);
+	_log->log(Logger::l_usr_fail, _username, addr);
+	_status = s_passwd;
+
 	disconnect();
 
 }
@@ -297,6 +317,7 @@ bool TCPConn::whitelisted(std::string addr) {
 			}
 		}
 		whtlst.close();
+		return false;
 	}
 	else {
 		std::cout << "Unable to open file\n";
@@ -312,7 +333,7 @@ bool TCPConn::whitelisted(std::string addr) {
  **********************************************************************************************/
 
 void TCPConn::getMenuChoice() {
-	_connfd.writeFD("\nSelect a Menu Option!\n");
+	//_connfd.writeFD("\nSelect a Menu Option!\n");
    if (!_connfd.hasData())
       return;
    std::string cmd;
@@ -386,6 +407,10 @@ void TCPConn::sendMenu() {
  *    Throws: runtime_error for unrecoverable issues
  **********************************************************************************************/
 void TCPConn::disconnect() {
+	std::string addr;
+	_connfd.getIPAddrStr(addr);
+	if (_username == "") { _username = "NO USER"; }
+	_log->log(Logger::l_disconn, addr, _username);
    _connfd.closeFD();
 }
 

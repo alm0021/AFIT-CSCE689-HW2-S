@@ -11,12 +11,13 @@
 #include <memory>
 #include <sstream>
 #include "TCPServer.h"
+#include "Logger.h"
 
-
+const char logfilename[] = "server.log";
+static std::unique_ptr<Logger> _log = std::make_unique<Logger>(logfilename);
 
 TCPServer::TCPServer(){ // :_server_log("server.log", 0) {
 }
-
 
 TCPServer::~TCPServer() {
 
@@ -28,7 +29,6 @@ TCPServer::~TCPServer() {
  *
  *    Throws: socket_error for recoverable errors, runtime_error for unrecoverable types
  **********************************************************************************************/
-
 void TCPServer::bindSvr(const char *ip_addr, short unsigned int port) {
 
    struct sockaddr_in servaddr;
@@ -50,7 +50,6 @@ void TCPServer::bindSvr(const char *ip_addr, short unsigned int port) {
  *
  *    Throws: socket_error for recoverable errors, runtime_error for unrecoverable types
  **********************************************************************************************/
-
 void TCPServer::listenSvr() {
 
    bool online = true;
@@ -61,7 +60,7 @@ void TCPServer::listenSvr() {
 
    // Start the server socket listening
    _sockfd.listenFD(5);
-
+   _log->log(Logger::l_svr); //Log server startup
     
    while (online) {
       struct sockaddr_in cliaddr;
@@ -86,6 +85,7 @@ void TCPServer::listenSvr() {
 		 //Check if IP Address is on whitelist
 		 if (!new_conn->whitelisted(ipaddr_str)) {
 			 std::cout << "IP address not on whitelist!\n";
+			 _log->log(Logger::l_wlist_no, ipaddr_str); //Log IP not on whitelist
 			 //Disconnect and remove them from the connect list
 			 new_conn->disconnect();
 			 _connlist.pop_back();
@@ -94,6 +94,7 @@ void TCPServer::listenSvr() {
 		 }
 
          new_conn->sendText("Welcome to the CSCE 689 Server!\n");
+		 _log->log(Logger::l_wlist_yes, ipaddr_str); //Log IP on whitelist
 
          // Change this later
          new_conn->startAuthentication();
@@ -136,7 +137,7 @@ void TCPServer::listenSvr() {
  **********************************************************************************************/
 
 void TCPServer::shutdown() {
-
+	_log->log(Logger::l_disconSvr); //Log Server Shutdown
    _sockfd.closeFD();
 }
 

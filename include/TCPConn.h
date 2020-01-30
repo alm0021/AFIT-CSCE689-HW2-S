@@ -41,7 +41,6 @@ public:
 
 private:
 
-
    enum statustype { s_username, s_changepwd, s_confirmpwd, s_passwd, s_menu };
 
    statustype _status = s_username;
