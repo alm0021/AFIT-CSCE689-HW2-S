@@ -130,6 +130,7 @@ void TCPConn::getUsername() {
 	std::string userName;
 	if (!getUserInput(userName))
 		return;
+	lower(userName); //convert to lowercase
 	_username = userName;
 	std::cout << "Username is: " << _username << std::endl;
 

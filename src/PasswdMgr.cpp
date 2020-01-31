@@ -369,8 +369,10 @@ std::string PasswdMgr::toString(std::vector< uint8_t > hash) {
 
 void PasswdMgr::addUser(const char *name, const char *passwd) {
    // Add those users!
-
-	if (checkUser(name)) { 
+	
+	std::string name_lower = name;
+	lower(name_lower); //convert to lowercase
+	if (checkUser(name_lower.c_str())) {
 		std::cout << "User Already Exists.\n"; 
 		return;
 	}
@@ -380,7 +382,7 @@ void PasswdMgr::addUser(const char *name, const char *passwd) {
 	if (!pwfile.openFile(FileFD::appendfd))
 		throw pwfile_error("Could not open passwd file for writing");
 	
-	std::string nameStr(name);
+	std::string nameStr(name_lower);
 	std::vector<uint8_t> hash, salt;
 	std::vector<uint8_t> userhash; // hash from the password file
 	std::vector<uint8_t> passhash; // hash derived from the parameter passwd
