@@ -4,6 +4,7 @@
 #include <iostream>
 #include <algorithm>
 #include <cstring>
+#include <sstream>
 #include <list>
 #include "PasswdMgr.h"
 #include "FileDesc.h"
@@ -96,6 +97,7 @@ bool PasswdMgr::checkPasswd(const char *name, const char *passwd) {
 bool PasswdMgr::changePasswd(const char *name, const char *passwd) {
 
    // Insert your insane code here
+
 	//Make sure user exits
 	std::vector<uint8_t> hash, salt, newHash;
 	if (!findUser(name, hash, salt)) {
@@ -112,33 +114,58 @@ bool PasswdMgr::changePasswd(const char *name, const char *passwd) {
 
 	//Open passwd file for reading
 	FileFD pwfile(_pwd_file.c_str());
-	if (!pwfile.openFile(FileFD::readfd))
-		throw pwfile_error("Could not open passwd file for writing");
+	if (!pwfile.openFile(FileFD::readfd)) {
+		throw pwfile_error("Could not open passwd file for reading");
+	}
 
 	std::string line;
 	std::vector<std::string> newLines;
 	
+	//Save data from current passwd file into vector of strings
 	while (pwfile.readStr(line) > 0)
 	{
 		clrNewlines(line);
-		if (line.compare(name) == 0) { //find username
-			pwfile.writeBytes(newHash);
-			findUser(name, hash, salt); //DEBUGGING
-			std::cout << "After hashing new password hash on file is "; //DEBUGGING
-			printBytes(hash); //DEBUGGING
-			pwfile.closeFD();
-			return true;
+		pwfile.readBytes(hash, HASHLEN);
+		pwfile.readBytes(salt, SALTLEN + 1);
+		salt.pop_back();
+		std::ostringstream os;
+
+		if (line.compare(name) == 0) { //if usernames match
+			os << line << "\n" << toString(newHash) << toString(salt) << "\n";
 		}
 		else {
-			newLines.push_back(line);
-			newLines.push_back('\n');
-			pwfile.readBytes(hash, HASHLEN);
-			pwfile.readBytes(salt, SALTLEN);
-			newLines.push_back();
+			os << line << "\n" << toString(hash) << toString(salt) << "\n";
 		}
+		std::cout << os.str(); //DEBUGGING
+		newLines.push_back(os.str());
+		os.flush();
+	}
+	pwfile.closeFD();
+
+	if (writeNewPWF(newLines) == 0) {
+		return false;
+	}
+	else { return true; }
+
+}
+
+int PasswdMgr::writeNewPWF(std::vector<std::string> newLines) 
+{
+	//Open passwd file for writing
+	FileFD pwfile(_pwd_file.c_str());
+	if (!pwfile.openFile(FileFD::writefd)) {
+		throw pwfile_error("Could not open passwd file for writing");
 	}
 
-   return false;
+	int bytesWritten = 0;
+
+	//write data from vector to passwd file
+	for (int i = 0; i < newLines.size(); i++)
+	{
+		bytesWritten += pwfile.writeFD(newLines[i]);
+	}
+
+	return bytesWritten;
 }
 
 /*****************************************************************************************************
