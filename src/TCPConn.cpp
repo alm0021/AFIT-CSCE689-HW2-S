@@ -1,4 +1,4 @@
-#include <stdexcept>
+﻿#include <stdexcept>
 #include <strings.h>
 #include <unistd.h>
 #include <cstring>
@@ -13,15 +13,18 @@
 
 // The filename/path of the password file
 const char pwdfilename[] = "passwd";
+// The filename/path of the server file
 const char logfilename[] = "server.log";
+
+//PasswdMgr to handle users and passwords
 static std::unique_ptr<PasswdMgr> _pwd = std::make_unique<PasswdMgr>(pwdfilename);
+//Logger objects to handle logging
 static std::unique_ptr<Logger> _log = std::make_unique<Logger>(logfilename);
 
 TCPConn::TCPConn() { // LogMgr &server_log):_server_log(server_log) {
 }
 
 TCPConn::~TCPConn() {
-
 }
 
 /**********************************************************************************************
@@ -31,7 +34,6 @@ TCPConn::~TCPConn() {
  *
  *    Throws: socket_error for recoverable errors, runtime_error for unrecoverable types
  **********************************************************************************************/
-
 bool TCPConn::accept(SocketFD &server) {
    return _connfd.acceptFD(server);
 }
@@ -44,7 +46,6 @@ bool TCPConn::accept(SocketFD &server) {
  *
  *    Throws: runtime_error for unrecoverable errors
  **********************************************************************************************/
-
 int TCPConn::sendText(const char *msg) {
    return sendText(msg, strlen(msg));
 }
@@ -61,7 +62,6 @@ int TCPConn::sendText(const char *msg, int size) {
  *
  *    Throws: runtime_error for unrecoverable types
  **********************************************************************************************/
-
 void TCPConn::startAuthentication() {
 
    // Skipping this for now
@@ -76,7 +76,6 @@ void TCPConn::startAuthentication() {
  *
  *    Throws: runtime_error for unrecoverable issues
  **********************************************************************************************/
-
 void TCPConn::handleConnection() {
 
    timespec sleeptime;
@@ -121,12 +120,13 @@ void TCPConn::handleConnection() {
  *
  *    Throws: runtime_error for unrecoverable issues
  **********************************************************************************************/
-
 void TCPConn::getUsername() {
-   // Insert your mind-blowing code here
 
+	//Check for data on the socket
 	if (!_connfd.hasData())
 		return;
+	
+	//Get username from client
 	std::string userName;
 	if (!getUserInput(userName))
 		return;
@@ -159,14 +159,14 @@ void TCPConn::getUsername() {
  *
  *    Throws: runtime_error for unrecoverable issues
  **********************************************************************************************/
-
 void TCPConn::getPasswd() {
-	// Insert your astounding code here
 
 	std::string clrTxt, msg;
 	_pwd_attempts = 2;
+
 	while (_pwd_attempts > 0) {
 		_connfd.writeFD("Enter Password: \n");
+		//if getUserInput fails, decrease attempts
 		if (!getUserInput(clrTxt)) {
 			_pwd_attempts--;
 			msg += "Invalid Password Attempt. \n";
@@ -175,6 +175,7 @@ void TCPConn::getPasswd() {
 			_connfd.writeFD(msg);
 		}
 		else {
+			//check if password matches user entry in passwd file
 			if (!_pwd->checkPasswd(_username.c_str(), clrTxt.c_str())) {
 				_pwd_attempts--;
 				msg += "Invalid Password Attempt. \n";
@@ -185,13 +186,15 @@ void TCPConn::getPasswd() {
 			else {
 				std::cout << "User Password Accepted\n";
 				_connfd.writeFD("Password Accepted. Loggin in...\n");
-				_status = s_menu;
+				
+				_status = s_menu; //set _status to go to menu next
 
 				//Log Successful Login Attempt
 				std::string addr;
 				_connfd.getIPAddrStr(addr);
 				_log->log(Logger::l_usr_yes, _username, addr);
-				_status = s_menu;
+
+				_connfd.writeFD("\nSelect a Menu Option!\n");
 
 				return;
 			}
@@ -206,10 +209,8 @@ void TCPConn::getPasswd() {
 	std::string addr;
 	_connfd.getIPAddrStr(addr);
 	_log->log(Logger::l_usr_fail, _username, addr);
-	_status = s_passwd;
 
 	disconnect();
-
 }
 
 /**********************************************************************************************
@@ -220,42 +221,53 @@ void TCPConn::getPasswd() {
  *
  *    Throws: runtime_error for unrecoverable issues
  **********************************************************************************************/
-
 void TCPConn::changePassword() {
-	// Insert your amazing code here
 	std::string clrTxt, msg;
 	_pwd_attempts = 3;
 
+	//First checks if user is changing or confirmin password and there are attempts left
 	while (_status == s_changepwd && _pwd_attempts > 0) {
+		//Get user input for password
 		if (!getUserInput(clrTxt)) {
 			_pwd_attempts--;
 			msg += "Invalid Password. \n";
 			_connfd.writeFD(msg);
 		}
+		//Check if password is the same as old password
 		else if (_pwd->checkPasswd(_username.c_str(), clrTxt.c_str())) {
 			_connfd.writeFD("New password is the same as current password.\n");
 			_status = s_menu;
+
 			return;
 		}
+		//change password
 		else {
 			if (_pwd->changePasswd(_username.c_str(), clrTxt.c_str())) {
 				std::cout << "New User Password Accepted\n";
 				_connfd.writeFD("New User Password Accepted.\n");
-				_pwd_attempts = 3;
-				_status = s_confirmpwd;
+
+				_pwd_attempts = 3; //reset password attempts
+
+				_status = s_confirmpwd; //set status to confirm so that user can confirm
 			}
 			else {
 				_pwd_attempts--;
 				_connfd.writeFD("Invalid.\n");
+
 				return;
 			}
 		}
 	}
+	//If user is changing password, call getPasswd and set status to menu
 	if (_status == s_confirmpwd) {
 		getPasswd();
+
 		_status = s_menu;
+		_connfd.writeFD("\nSelect a Menu Option!\n");
+
 		return;
 	}
+
 	//After 2 attempts, disconnect
 	std::cout << "Too many invalid password attemtps. Disconnecting user...\n";
 	_connfd.writeFD("Too many invalid password attemtps. Disconnecting user...\n");
@@ -274,7 +286,6 @@ void TCPConn::changePassword() {
  *
  *    Throws: runtime_error for unrecoverable issues
  **********************************************************************************************/
-
 bool TCPConn::getUserInput(std::string &cmd) {
    std::string readbuf;
 
@@ -301,6 +312,10 @@ bool TCPConn::getUserInput(std::string &cmd) {
 /**********************************************************************************************
  * whitelisted - Returns true is given IP address in on whitelist and false otherwise.
  *
+ *    Params: addr - IP address to check against whitelist
+ *
+ *    Returns: true if IP address in on whitelist, false if otherwise
+
  *    Throws: runtime_error for unrecoverable issues
  **********************************************************************************************/
 bool TCPConn::whitelisted(std::string addr) {
@@ -332,7 +347,6 @@ bool TCPConn::whitelisted(std::string addr) {
  *
  *    Throws: runtime_error for unrecoverable issues
  **********************************************************************************************/
-
 void TCPConn::getMenuChoice() {
 	//_connfd.writeFD("\nSelect a Menu Option!\n");
    if (!_connfd.hasData())
@@ -344,7 +358,8 @@ void TCPConn::getMenuChoice() {
    // Don't be lazy and use my outputs--make your own!
    std::string msg;
    if (cmd.compare("hello") == 0) {
-      _connfd.writeFD("Hello back!\n");
+      _connfd.writeFD("Hello, 3D World!\n");
+	  _connfd.writeFD("\nSelect a Menu Option!\n");
    } else if (cmd.compare("menu") == 0) {
       sendMenu();
    } else if (cmd.compare("exit") == 0) {
@@ -354,25 +369,77 @@ void TCPConn::getMenuChoice() {
       _connfd.writeFD("New Password: ");
       _status = s_changepwd;
    } else if (cmd.compare("1") == 0) {
-      msg += "You want a prediction about the weather? You're asking the wrong Phil.\n";
-      msg += "I'm going to give you a prediction about this winter. It's going to be\n";
-      msg += "cold, it's going to be dark and it's going to last you for the rest of\n";
-      msg += "your lives!\n";
+      msg += "Thank you ";
+	  msg += _username;
+      msg += "!\nBut our princess is another castle!\n";
       _connfd.writeFD(msg);
+	  _connfd.writeFD("\nSelect a Menu Option!\n");
    } else if (cmd.compare("2") == 0) {
-      _connfd.writeFD("42\n");
+      _connfd.writeFD("Don't fall off.\n");
    } else if (cmd.compare("3") == 0) {
-      _connfd.writeFD("That seems like a terrible idea.\n");
+      _connfd.writeFD("No.\n");
    } else if (cmd.compare("4") == 0) {
-
+	   msg += "────────────────────────────────────────\n";
+	   msg += "──────────────────────▒████▒────────────\n";
+	   msg += "───────────────────░█████▓███░──────────\n";
+		   msg += "─────────────────░███▒░░░░░░██──────────\n";
+		   msg += "────────────────▒██▒░░░▒▓▓▓▒░██─────────\n";
+		   msg += "───────────────▓██░░░▒▓█▒▒▒▓▒▓█─────────\n";
+		   msg += "──────────────▓█▓─░▒▒▓█─────▓▓█░────────\n";
+		   msg += "─────────────▓█▒░▒▒▒▒█──▓▓▒▒─▓█▒────────\n";
+		   msg += "────────────▒█▒░▒▒▒▒▓▒─▒▓▒▓▓─▒█░────────\n";
+		   msg += "────────────█▓░▒▒▒▒▒▓░─▓▒──░░▒█░────────\n";
+		   msg += "───────────██░▒▒▒▒▒▒█──▓──░▓████████────\n";
+		   msg += "──────────░█▒▒▒▒▒▒▒▒▓░─█▓███▓▓▓▓██─█▓───\n";
+		   msg += "────────▒▓█▓▒▒▒▒▒▒▒▒▓███▓▓████▓▓██──█───\n";
+		   msg += "──────░███▓▒▒▒▒▓▒▒▒████▒▒░░──████░──██░─\n";
+		   msg += "──────██▒▒▒▒▒▒▒▒▒▓██▒────────▒██▓────▓█─\n";
+		   msg += "─────▓█▒▒▒▒▒▒▒▒▓█▓─────▓───▒░░▓──▓────▓█\n";
+		   msg += "─────██▒▓▒▒▒▒▒█▓──────▒█▓──▓█░▒──▒░────█\n";
+		   msg += "─────██▒▒▓▓▓▒█▓▓───░──▓██──▓█▓▓▓█▓─────█\n";
+		   msg += "─────▓█▒██▓▓█▒▒▓█─────░█▓──▒░───░█▓────█\n";
+		   msg += "─────░██▓───▓▓▒▒▓▓─────░─────────▒▒─░─░█\n";
+		   msg += "──────▓█──▒░─█▒▓█▓──▒───────░─░───█▒──█▒\n";
+		   msg += "───────█──░█░░█▓▒──▓██▒░─░─░─░─░░░█▒███─\n";
+		   msg += "───────█▒──▒▒──────▓██████▓─░░░░─▒██▓░──\n";
+		   msg += "───────▓█──────────░██▓▓▓██▒─░──░█▒─────\n";
+		   msg += "────────██▒─────░───░██▓▓▓██▓▒▒▓█▒──────\n";
+		   msg += "─────────░████▒──░───▒█▓▓▓▓▓████▓───────\n";
+		   msg += "────────▒▓██▓██▒──░───▓█████▓███────────\n";
+		   msg += "──────▒██▓░░░░▓█▓░────░█▒█▒─▒▓█▓────────\n";
+		   msg += "─────▓█▒░░▒▒▒▒▒▓███▓░──▓█▒─▒▓▓█─────────\n";
+		   msg += "────░█▒░▒████▓██▓▓▓██▒───░▓█▓█░─────────\n";
+		   msg += "────▓█▒▒█░─▒───▓█▓▓▓▓▓▓▒▒▓█▓█▓──────────\n";
+		   msg += "────▓█▒█░───────██▓▓▓▓▓█▓▓█▓██──────────\n";
+		   msg += "────▒█▓▓────────░██▓██▓▓▓▓▓▓▓▓█─────────\n";
+		   msg += "─────██░────▓▓────█░─█▓▓▓▓▓▓▓─▒█████────\n";
+		   msg += "─────██░───░──────▓░─▓▓▓▓▓▓▓█─▒█▒░▒██───\n";
+		   msg += "────▓█░▓░──▓▓────▒█░─█▓▓▓▓▓▓▓█▒─░░░▒██──\n";
+		   msg += "────█─▒██─░──────████▓▓▓▓▓▓▓█▓─░▒▒█▓▓█░─\n";
+		   msg += "───▓█─▓▒▓▒░░────▓█▓▓▓▓▓▓▓▓▓▓█░░▒▓█░──▒█─\n";
+		   msg += "───▒█░█▒▒█▒───░▓█▓▓▓▓▓▓▓▓▓▓█▓░▒▓▓──▓█▓█─\n";
+		   msg += "───█▓▒▓▒▒▓██████▓▓▓▓▓▓▓▓▓▓▓█▒▒▓▓─░█▓▒▒█░\n";
+		   msg += "───█░▓▓▒▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓█▒▒▓─▒█▒▒▒▒█─\n";
+		   msg += "──▒█─█▒▒▒▓█▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒▓─▒█▒▒▒▒██─\n";
+		   msg += "──▓█─█▒▒▒▒█▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓█▒▓▒░█▒▒▒░▓█──\n";
+		   msg += "──▓█─█▒▓▒▒▓█▓▓▓▓▓▓▓▓▓▓▓▓▓█▓▒▓░▓░░░░▒█░──\n";
+		   msg += "──▒█─▓▓▓▓▒▓█▓▓▓▓▓▓▓▓█████▓▓▓▓▒▓░░─▒█▒───\n";
+		   msg += "───█▒▓▓▓▓▓▒▓██████████░░██▓█─▒█▓▒▓█░────\n";
+		   msg += "───▓█▒█▓▓▓▓▒▓██░─░▒░─────██▒░▓▓▓▒██─────\n";
+		   msg += "────████▓▓▓██░───────────▓█░▓▒░░▓█░─────\n";
+		   msg += "──────░█████░─────────────██▓─▒██░──────\n";
+		   msg += "───────────────────────────▓███▒────────\n";
+		   _connfd.writeFD(msg);
+		   _connfd.writeFD("\nSelect a Menu Option!\n");
    } else if (cmd.compare("5") == 0) {
-      _connfd.writeFD("I'm singing, I'm in a computer and I'm siiiingiiiing! I'm in a\n");
-      _connfd.writeFD("computer and I'm siiiiiiinnnggiiinnggg!\n");
+      _connfd.writeFD("“Just because you try hard doesn’t mean you’ll make it into the battle,”\n");
+	  _connfd.writeFD("\nSelect a Menu Option!\n");
    } else {
       msg = "Unrecognized command: ";
       msg += cmd;
       msg += "\n";
       _connfd.writeFD(msg);
+	  _connfd.writeFD("\nSelect a Menu Option!\n");
    }
 
 }
@@ -387,11 +454,11 @@ void TCPConn::sendMenu() {
 
    // Make this your own!
    menustr += "Available choices: \n";
-   menustr += "  1). Provide weather report.\n";
-   menustr += "  2). Learn the secret of the universe.\n";
-   menustr += "  3). Play global thermonuclear war\n";
-   menustr += "  4). Do nothing.\n";
-   menustr += "  5). Sing. Sing a song. Make it simple, to last the whole day long.\n\n";
+   menustr += "  1). Save the princess.\n";
+   menustr += "  2). Learn the secret of the Rainbow Road.\n";
+   menustr += "  3). Play Return of Donkey Kong\n";
+   menustr += "  4). See the plumber.\n";
+   menustr += "  5). Play as Waluigi in Smash.\n\n";
    menustr += "Other commands: \n";
    menustr += "  Hello - self-explanatory\n";
    menustr += "  Passwd - change your password\n";
@@ -408,10 +475,12 @@ void TCPConn::sendMenu() {
  *    Throws: runtime_error for unrecoverable issues
  **********************************************************************************************/
 void TCPConn::disconnect() {
+	//log disconnection
 	std::string addr;
 	_connfd.getIPAddrStr(addr);
 	if (_username == "") { _username = "NO USER"; }
 	_log->log(Logger::l_disconn, addr, _username);
+
    _connfd.closeFD();
 }
 
@@ -432,4 +501,3 @@ bool TCPConn::isConnected() {
 void TCPConn::getIPAddrStr(std::string &buf) {
    return _connfd.getIPAddrStr(buf);
 }
-

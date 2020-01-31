@@ -60,6 +60,7 @@ void TCPServer::listenSvr() {
 
    // Start the server socket listening
    _sockfd.listenFD(5);
+
    _log->log(Logger::l_svr); //Log server startup
     
    while (online) {
@@ -80,12 +81,12 @@ void TCPServer::listenSvr() {
          std::string ipaddr_str;
          new_conn->getIPAddrStr(ipaddr_str);
 
-		 //TESTING: Display IP Address*********
-		 std::cout << "IP Address is: " << ipaddr_str << std::endl;
 		 //Check if IP Address is on whitelist
 		 if (!new_conn->whitelisted(ipaddr_str)) {
 			 std::cout << "IP address not on whitelist!\n";
+			 
 			 _log->log(Logger::l_wlist_no, ipaddr_str); //Log IP not on whitelist
+
 			 //Disconnect and remove them from the connect list
 			 new_conn->disconnect();
 			 _connlist.pop_back();
@@ -94,6 +95,7 @@ void TCPServer::listenSvr() {
 		 }
 
          new_conn->sendText("Welcome to the CSCE 689 Server!\n");
+
 		 _log->log(Logger::l_wlist_yes, ipaddr_str); //Log IP on whitelist
 
          // Change this later

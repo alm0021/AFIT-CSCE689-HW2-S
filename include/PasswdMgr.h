@@ -23,8 +23,8 @@ class PasswdMgr {
 
       void hashArgon2(std::vector<uint8_t> &ret_hash, std::vector<uint8_t> &ret_salt, const char *passwd, 
                                                                                  std::vector<uint8_t> *in_salt = NULL);
-	  void printBytes(std::vector <uint8_t> hash);
-	  std::string toString(std::vector<uint8_t> hash);
+	  void printBytes(std::vector <uint8_t> hash); //prints hash or salt in hex
+	  std::string toString(std::vector<uint8_t> hash); //converts hash or salt to string
 
 	  int writeNewPWF(std::vector<std::string> newLines);
 
