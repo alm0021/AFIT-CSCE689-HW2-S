@@ -19,8 +19,9 @@ Logger::~Logger() {
 
 
 /*******************************************************************************************
- * log - Logs
+ * log - Logs event
  *
+	  Params: l - logtype to specify what type of log message to use
  *    Throws: logfile_error if there were unanticipated problems opening the log file for
  *            reading
  *******************************************************************************************/
@@ -51,6 +52,16 @@ void Logger::log(logtype l) {
 	logfile.writeFD(data);
 	logfile.closeFD();
 }
+
+/*******************************************************************************************
+ * log - overloaded log funtion to log events
+ *
+	  Params: l - logtype to specify what type of log message to use
+		      ip_addr - IP address for current connection
+
+ *    Throws: logfile_error if there were unanticipated problems opening the log file for
+ *            reading
+ *******************************************************************************************/
 void Logger::log(logtype l, std::string ip_addr) {
 	//Open log file for writing (append)
 	FileFD logfile(_log_file.c_str());
@@ -70,6 +81,16 @@ void Logger::log(logtype l, std::string ip_addr) {
 	logfile.closeFD();
 }
 
+/*******************************************************************************************
+ * log - overloaded log funtion to log events
+ *
+	  Params: l - logtype to specify what type of log message to use
+			  ip_addr - IP address for current connection
+			  username - username of current user
+
+ *    Throws: logfile_error if there were unanticipated problems opening the log file for
+ *            reading
+ *******************************************************************************************/
 void Logger::log(logtype l, std::string ip_addr, std::string username) { 
 	//Open log file for writing (append)
 	FileFD logfile(_log_file.c_str());

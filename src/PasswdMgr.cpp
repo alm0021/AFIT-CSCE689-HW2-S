@@ -58,18 +58,7 @@ bool PasswdMgr::checkPasswd(const char *name, const char *passwd) {
    if (!findUser(name, userhash, salt))
       return false;
 
-   //std::cout << name << "'s passwd is " << passwd << std::endl; //DEBUGGING
-   //std::cout << name << "'s hash is "; //DEBUGGING
-   //printBytes(userhash); //DEBUGGING
-   //std::cout << name << "'s salt is ";
-   //printBytes(salt); //DEBUGGING
-
    hashArgon2(passhash, salt, passwd, &salt);
-
-   //std::cout << "After hashing hash is "; //DEBUGGING
-   //printBytes(passhash); //DEBUGGING
-   //std::cout << "After hashing salt is "; //DEBUGGING
-   //printBytes(salt); //DEBUGGING
 
    if (userhash == passhash)
       return true;
@@ -100,11 +89,6 @@ bool PasswdMgr::changePasswd(const char *name, const char *passwd) {
 	
 	//Generate hash of new password using existing salt
 	hashArgon2(newHash, salt, passwd, &salt); 
-
-	//std::cout << "After hashing new password hash is "; //DEBUGGING
-	//printBytes(newHash); //DEBUGGING
-	//std::cout << "After hashing new (old) salt is "; //DEBUGGING
-	//printBytes(salt); //DEBUGGING
 
 	//Open passwd file for reading
 	FileFD pwfile(_pwd_file.c_str());
@@ -197,8 +181,7 @@ bool PasswdMgr::readUser(FileFD &pwfile, std::string &name, std::vector<uint8_t>
 		pwfile.readBytes(hash, HASHLEN);
 		pwfile.readBytes(salt, SALTLEN + 1);
 		salt.pop_back();
-		//std::cout << "Salt size is " << salt.size() << "\n"; //DEBUGGING
-		//std::cout << "User " << name << " is in passwd file.\n"; //DEBUGGING
+
 		return true;
 	}
 	std::cout << "End of passwd file.\n";
@@ -317,16 +300,12 @@ void PasswdMgr::hashArgon2(std::vector<uint8_t> &ret_hash, std::vector<uint8_t> 
 			//salt for the password (same if already provided)
 			ret_salt.push_back(salt[i]);
 		}
-
 	}
 	else
 	{
 		std::cerr << "Error hashing Password\n";
 	}
-	//std::cout << "(INSIDE ARGON) Hashed PW is "; //DEBUGGING
-	//for (int i = 0; i < HASHLEN; ++i) printf("%02x", ret_hash[i]); printf("\n"); //DEBUGGING
-	//std::cout << "(INSIDE ARGON) Salt is "; //DEBUGGING
-	//for (int i = 0; i < SALTLEN; ++i) printf("%02x", ret_salt[i]); printf("\n"); //DEBUGGING
+
 }
 
 /****************************************************************************************************
@@ -352,7 +331,6 @@ std::string PasswdMgr::toString(std::vector< uint8_t > hash) {
 	std::string str;
 	std::ostringstream os;
 	for (int i = 0; i < hash.size(); ++i) {
-		//printf("%02x", hash[i]);
 		os << hash[i];
 	}
 	str = os.str();

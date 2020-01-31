@@ -348,14 +348,14 @@ bool TCPConn::whitelisted(std::string addr) {
  *    Throws: runtime_error for unrecoverable issues
  **********************************************************************************************/
 void TCPConn::getMenuChoice() {
-	//_connfd.writeFD("\nSelect a Menu Option!\n");
+
    if (!_connfd.hasData())
       return;
    std::string cmd;
    if (!getUserInput(cmd))
       return;
    lower(cmd);      
-   // Don't be lazy and use my outputs--make your own!
+
    std::string msg;
    if (cmd.compare("hello") == 0) {
       _connfd.writeFD("Hello, 3D World!\n");
@@ -441,7 +441,6 @@ void TCPConn::getMenuChoice() {
       _connfd.writeFD(msg);
 	  _connfd.writeFD("\nSelect a Menu Option!\n");
    }
-
 }
 
 /**********************************************************************************************
